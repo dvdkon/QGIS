@@ -360,6 +360,7 @@ set(QGIS_CORE_SRCS
   tiledscene/qgscesiumtilesdataprovider.cpp
   tiledscene/qgscesiumutils.cpp
   tiledscene/qgsgltfutils.cpp
+  tiledscene/qgsquantizedmeshutils.cpp
   tiledscene/qgstiledsceneboundingvolume.cpp
   tiledscene/qgstiledsceneconnection.cpp
   tiledscene/qgstiledscenedataitems.cpp

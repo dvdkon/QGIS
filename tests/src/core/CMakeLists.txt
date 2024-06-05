@@ -152,6 +152,7 @@ set(TESTS
  testqgsprojutils.cpp
  testqgsproperty.cpp
  testqgsprovidermetadata.cpp
+ testqgsquantizedmeshutils.cpp
  testqgsrange.cpp
  testqgsrasterblock.cpp
  testqgsrastercontourrenderer.cpp
