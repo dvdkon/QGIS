@@ -350,6 +350,11 @@ void Qgs3DMapScene::onCameraChanged()
   emit viewed2DExtentFrom3DChanged( extent2D );
   schedule2DMapOverlayUpdate();
 
+  recomputeOrigin();
+}
+
+void Qgs3DMapScene::recomputeOrigin()
+{
   // The magic to make things work better in large scenes (e.g. more than 50km across)
   // is here: we will simply move the origin of the scene, and update transforms
   // of the camera and all other entities. That should ensure we will not need to deal

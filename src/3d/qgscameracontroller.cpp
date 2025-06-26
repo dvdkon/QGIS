@@ -214,6 +214,10 @@ void QgsCameraController::zoomCameraAroundPivot( const QVector3D &oldCameraPosit
   mCameraPose.setDistanceFromCenterPoint( newDistance );
   mCameraPose.setCenterPoint( newViewCenter );
   updateCameraFromPose();
+
+  // Recompute the origin right away and not on the next frame to avoid
+  // unpleasant jitters when far away from the scene.
+  mScene->recomputeOrigin();
 }
 
 void QgsCameraController::zoomCameraAroundPivot( const QVector3D &oldCameraPosition, double oldDistanceFromCenterPoint, double zoomFactor, const QVector3D &pivotPoint )
