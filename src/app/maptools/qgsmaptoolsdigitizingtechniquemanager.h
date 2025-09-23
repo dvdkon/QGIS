@@ -27,7 +27,9 @@
 
 class QgsSpinBox;
 class QgsSettingsEntryString;
+#ifndef SIP_RUN
 template<class T> class QgsSettingsEntryEnumFlag;
+#endif
 
 class QAction;
 class QToolButton;

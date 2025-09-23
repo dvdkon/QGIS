@@ -33,7 +33,9 @@ class QgsSettingsEntryBool;
 class QgsSettingsEntryDouble;
 class QgsSettingsEntryInteger;
 class QgsSettingsEntryString;
+#ifndef SIP_RUN
 template<class T> class QgsSettingsEntryEnumFlag;
+#endif
 
 
 #ifdef SIP_RUN

@@ -17,6 +17,7 @@
 
 #include "qgsconditionalstyle.h"
 #include "qgsfeatureexpressionvaluesgatherer.h"
+#include "qgsfeaturerequest.h"
 
 #include <QAbstractItemModel>
 #include <QTimer>

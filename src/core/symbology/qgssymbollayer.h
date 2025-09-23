@@ -44,10 +44,6 @@ class QgsPaintEffect;
 class QgsSymbolLayerReference;
 class QgsSldExportContext;
 
-#ifndef SIP_RUN
-typedef QMap<QString, QString> QgsStringMap;
-#endif
-
 /**
  * \ingroup core
  * \class QgsSymbolLayer

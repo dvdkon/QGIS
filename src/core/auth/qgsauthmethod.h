@@ -24,6 +24,9 @@
 #include <QStringList>
 #include <QUrl>
 #include <QRecursiveMutex>
+#ifdef HAVE_GUI
+#include <QWidget>
+#endif
 
 #include "qgsconfig.h"
 #include "qgis_core.h"

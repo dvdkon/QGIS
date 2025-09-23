@@ -17,6 +17,7 @@
 
 
 #include "qgsfeaturepickermodelbase.h"
+#include "qgsfeaturerequest.h"
 
 /**
  * \ingroup core

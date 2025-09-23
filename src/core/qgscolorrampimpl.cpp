@@ -26,6 +26,7 @@
 #include <QTime>
 #include <QDir>
 #include <QFileInfo>
+#include <QRegularExpression>
 
 //////////////
 

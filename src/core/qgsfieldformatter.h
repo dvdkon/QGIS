@@ -21,6 +21,7 @@
 
 #include "qgis_core.h"
 #include "qgsvectorlayerref.h"
+#include "qgsproject.h"
 
 class QgsVectorLayer;
 

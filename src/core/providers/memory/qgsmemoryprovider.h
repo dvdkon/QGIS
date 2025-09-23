@@ -24,7 +24,6 @@
 #include "qgsprovidermetadata.h"
 
 ///@cond PRIVATE
-typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap;
 
 class QgsSpatialIndex;
 

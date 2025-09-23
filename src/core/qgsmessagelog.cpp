@@ -33,6 +33,9 @@ void QgsMessageLog::logMessage( const QString &message, const QString &tag, Qgis
   Q_UNUSED( function )
   Q_UNUSED( line )
 #endif
+  // Shut up about the goddamn deprecations!
+  if ( message.contains( QStringLiteral( " DeprecationWarning: " ) ) ) return;
+
   switch ( level )
   {
     case Qgis::MessageLevel::Info:

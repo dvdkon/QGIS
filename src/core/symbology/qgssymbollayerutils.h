@@ -38,10 +38,6 @@ class QgsPathResolver;
 class QgsReadWriteContext;
 class QgsSymbolLayer;
 
-typedef QMap<QString, QString> QgsStringMap;
-typedef QMap<QString, QgsSymbol * > QgsSymbolMap;
-typedef QList< QPair< QColor, QString > > QgsNamedColorList SIP_SKIP;
-
 class QDomDocument;
 class QDomElement;
 class QIcon;

@@ -20,6 +20,7 @@
 
 
 #include <QMetaEnum>
+#include <QColor>
 #include <cfloat>
 #include <memory>
 #include <cmath>
@@ -6903,7 +6904,20 @@ Q_DECL_DEPRECATED const long GEOCRS_ID = 3452;
  */
 Q_DECL_DEPRECATED const long GEO_EPSG_CRS_ID = 4326;
 
-typedef QMap<QString, QString> QgsStringMap SIP_SKIP;
+// Typedefs of primitives and Qt containers
+typedef QList<int> QgsAttributeList;
+typedef QSet<int> QgsAttributeIds;
+typedef QMap<QString, QString> QgsStringMap;
+/**
+ * \ingroup core
+ * \brief List of colors paired with a friendly display name identifying the color
+*/
+typedef QList< QPair< QColor, QString > > QgsNamedColorList;
+
+// Typedefs using forward declarations for breaking up include cycles
+class QgsSymbol;
+typedef QList<QgsSymbol *> QgsSymbolList;
+typedef QMap<QString, QgsSymbol * > QgsSymbolMap;
 
 /**
  * Qgssize is used instead of size_t, because size_t is stdlib type, unknown

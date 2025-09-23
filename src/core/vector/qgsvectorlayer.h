@@ -92,9 +92,6 @@ class QgsSettingsEntryDouble;
 class QgsSettingsEntryBool;
 
 
-typedef QList<int> QgsAttributeList;
-typedef QSet<int> QgsAttributeIds;
-
 // TODO QGIS4: Remove virtual from non-inherited methods (like isModified)
 
 /**

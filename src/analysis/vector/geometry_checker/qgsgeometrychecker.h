@@ -26,9 +26,7 @@
 
 #include "qgis_analysis.h"
 #include "qgsfeedback.h"
-#include "qgsfeatureid.h"
 
-typedef qint64 QgsFeatureId;
 class QgsGeometryCheckContext;
 class QgsGeometryCheck;
 class QgsGeometryCheckError;

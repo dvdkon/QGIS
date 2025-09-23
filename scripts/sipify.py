@@ -12,7 +12,9 @@ import sys
 
 from collections import defaultdict
 from enum import Enum, auto
-from typing import Any, Optional
+from typing import Any, Literal, Optional
+from pathlib import Path
+from dataclasses import dataclass
 
 
 class Visibility(Enum):
@@ -39,6 +41,13 @@ class MultiLineType(Enum):
     NotMultiline = auto()
     Method = auto()
     ConditionalStatement = auto()
+
+
+@dataclass
+class BindingForHeader:
+    source: Literal["pyqt"] | Literal["qgis"] | Literal["extra"]
+    import_path: str
+    source_path: Path | None = None
 
 
 class Context:
@@ -104,6 +113,13 @@ class Context:
         self.deprecated_message = None
         self.method_py_name: Optional[str] = None
         self.current_method_is_override: bool = False
+        self.cpp_header_to_sip_binding_map: dict[str, BindingForHeader] = {}
+        """
+        Map from C++ header names to .sip binding files. The keys are
+        lowercase for case-insensitive matching.
+        """
+        self.bindings_imported: set[str] = set()
+        """Set of all already imported bindings, to prevent duplicates."""
 
     def reset_method_state(self):
         """
@@ -128,6 +144,8 @@ class Context:
 
 
 CONTEXT = Context()
+
+QGIS_SRC_DIR = Path(__file__).parent.parent / "src"
 
 ALLOWED_NON_CLASS_ENUMS = [
     "QgsSipifyHeader::MyEnum",
@@ -555,6 +573,81 @@ CLASS_HEADERFILES = {
     "QgsSettingsEntryBaseTemplate": "qgssettingsentry.h",
 }
 
+# List of header -> sip file mappings not automatically found by the below
+# functions
+EXTRA_HEADER_SIP_MAPPINGS = {
+    "QDomDocument": "QtXml/QtXmlmod.sip",
+    "QDomElement": "QtXml/QtXmlmod.sip",
+    "QDomNode": "QtXml/QtXmlmod.sip",
+    "QUndoCommand": "QtWidgets/QtWidgetsmod.sip",
+}
+
+
+def get_pyqt_header_sip_mapping() -> dict[str, BindingForHeader]:
+    """
+    Look through all PyQt .sip binding files and create a map of "Qt header
+    file" -> "PyQt binding file". Casing information is lost in the transition
+    between Qt private "qsomething.h" and public "QSomething" headers, so the
+    result's keys are all lowercase.
+    We need this for automatically generating SIP %Imports.
+    """
+    if CONTEXT.is_qt6:
+        import PyQt6 as PyQt
+    else:
+        import PyQt5 as PyQt
+
+    bindings_dir = Path(PyQt.__file__).parent / "bindings"
+    bindings = bindings_dir.glob("**/*.sip")
+
+    mapping = {}
+    for binding in bindings:
+        name = binding.stem
+        if re.match("Qt.*mod", name):
+            # Summary binding for whole module, no header equivalent
+            continue
+        name = re.sub(r"^qpy[a-z]+_(.*)", r"\1", name)
+
+        # Sadly PyQt doesn't support importing the individual .sip files, so we
+        # have to import the whole module instead.
+        qtmod = binding.parent.name
+        import_path = f"{qtmod}/{qtmod}mod.sip"
+
+        binding = BindingForHeader(
+            source="pyqt", import_path=import_path, source_path=binding
+        )
+
+        mapping[name.lower()] = binding  # e.g. QtSomething
+        mapping[name.lower() + ".h"] = binding  # e.g. qtsomething.h
+
+    return mapping
+
+
+def get_qgis_header_sip_mapping() -> dict[str, BindingForHeader]:
+    """
+    Look through all QGIS headers and create a map of "header name" -> ".sip
+    binding path".
+    """
+
+    headers = QGIS_SRC_DIR.glob("**/*.h")
+
+    mapping = {}
+    for header in headers:
+        rel_path = header.relative_to(QGIS_SRC_DIR).with_suffix(".sip")
+        sip_path = f"{rel_path.parts[0]}/auto_generated/{'/'.join(rel_path.parts[1:])}"
+
+        mapping[header.name.lower()] = BindingForHeader(
+            source="qgis", import_path=sip_path, source_path=header
+        )
+
+    return mapping
+
+
+def get_extra_header_sip_mapping() -> dict[str, BindingForHeader]:
+    return {
+        k.lower(): BindingForHeader(source="extra", import_path=v)
+        for k, v in EXTRA_HEADER_SIP_MAPPINGS.items()
+    }
+
 
 def replace_macros(line):
     line = re.sub(r"\bTRUE\b", "``True``", line)
@@ -618,32 +711,20 @@ def exit_with_error(message):
 
 
 def sip_header_footer():
-    header_footer = []
     # small hack to turn files src/core/3d/X.h to src/core/./3d/X.h
     # otherwise "sip up to date" test fails. This is because the test uses %Include entries
     # and over there we have to use ./3d/X.h entries because SIP parser does not allow a number
     # as the first letter of a relative path
     headerfile_x = re.sub(r"src/core/3d", r"src/core/./3d", CONTEXT.header_file)
-    header_footer.append(
-        "/************************************************************************\n"
-    )
-    header_footer.append(
-        " * This file has been generated automatically from                      *\n"
-    )
-    header_footer.append(
-        " *                                                                      *\n"
-    )
-    header_footer.append(f" * {headerfile_x:<68} *\n")
-    header_footer.append(
-        " *                                                                      *\n"
-    )
-    header_footer.append(
-        " * Do not edit manually ! Edit header and run scripts/sipify.py again   *\n"
-    )
-    header_footer.append(
-        " ************************************************************************/\n"
-    )
-    return header_footer
+    return [
+        "/************************************************************************\n",
+        " * This file has been generated automatically from                      *\n",
+        " *                                                                      *\n",
+        f" * {headerfile_x:<68} *\n",
+        " *                                                                      *\n",
+        " * Do not edit manually ! Edit header and run scripts/sipify.py again   *\n",
+        " ************************************************************************/\n",
+    ]
 
 
 def python_header():
@@ -1755,9 +1836,30 @@ def try_skip_sip_directives():
         return True
 
 
+def sip_binding_for_cpp_header(header_path: str) -> str | None:
+    header_path = header_path.lower()
+    binding = CONTEXT.cpp_header_to_sip_binding_map.get(header_path)
+    if binding is None:
+        return None
+    return binding.import_path
+
 def try_process_preprocessor_directive():
-    # Skip preprocessor directives
     if re.match(r"^\s*#", CONTEXT.current_line):
+        # Process #includes, turning them into %Imports
+        match = re.match(r'^\s*#include ["<](.*)[">]', CONTEXT.current_line)
+        if match:
+            header_path = match.group(1)
+            sip_path = sip_binding_for_cpp_header(header_path)
+            if sip_path:
+                if sip_path not in CONTEXT.bindings_imported:
+                    write_output("INC", f"@SIP_GRANULAR_BUILD_PREFIX@%Import {sip_path}\n")
+                    CONTEXT.bindings_imported.add(sip_path)
+                else:
+                    dbg_info(f"Skipping include of '{header_path}', since binding was already imported")
+            else:
+                dbg_info(f"Skipping include of '{header_path}' due to missing mapping")
+            return True
+
         # Skip #if 0 or #if defined(Q_OS_WIN) blocks
         match = re.match(r"^\s*#if (0|defined\(Q_OS_WIN\))", CONTEXT.current_line)
         if match:
@@ -1843,6 +1945,7 @@ def try_process_preprocessor_directive():
             return True
 
         else:
+            # Skip most preprocessor directives
             return True
 
 
@@ -1857,17 +1960,21 @@ def check_end_of_typeheadercode():
 
 
 def try_skip_forward_decl():
-    # Skip forward declarations
+    # Skip forward declarations if not in granular compile mode
     match = re.match(
-        r"^\s*(template ?<class T> |enum\s+)?(class|struct) \w+(?P<external> *SIP_EXTERNAL)?;\s*(//.*)?$",
+        r"^\s*(template ?<class T> |enum\s+)?(class|struct) (?P<name>\w+)(?P<external> *SIP_EXTERNAL)?;\s*(//.*)?$",
         CONTEXT.current_line,
     )
     if match:
         if match.group("external"):
             dbg_info("do not skip external forward declaration")
             CONTEXT.reset_method_state()
+        elif re.match(r"^Q[A-Z].*", match.group("name")):
+            dbg_info("turn forward declaration of Qt classes into include")
+            CONTEXT.current_line = f"#include <{match.group('name')}>"
+            return try_process_preprocessor_directive()
         else:
-            dbg_info("skipping forward declaration")
+            write_output("FWD", f"@QGIS_GRANULAR_BUILD_PREFIX@{CONTEXT.current_line}\n")
             return True
 
 
@@ -3470,18 +3577,26 @@ def process_input():
         if try_process_multiline_definition(): continue
         if try_write_comments(): continue
 
-def generate_cpp_output():
-    if args.sip_output:
-        with open(args.sip_output, "w") as f:
-            f.write("".join(sip_header_footer()))
-            f.write("".join(CONTEXT.output))
-            f.write("".join(sip_header_footer()))
+def generate_cpp_output(outfile):
+    content = (
+        "".join(sip_header_footer())
+        + "".join(CONTEXT.output)
+        + "".join(sip_header_footer())
+    )
+
+    if outfile:
+        outfile = Path(outfile)
+        outfile.parent.mkdir(parents=True, exist_ok=True)
+
+        existing_content = outfile.read_text()
+        if existing_content == content:
+            # Prevent updating mtime without changing anything and confusing
+            # the build system into rebuilding everything.
+            return
+        with open(outfile, "w") as f:
+            f.write(content)
     else:
-        print(
-            "".join(sip_header_footer())
-            + "".join(CONTEXT.output)
-            + "".join(sip_header_footer()).rstrip()
-        )
+        print(content.rstrip())
 
 def generate_python_output():
     class_additions = defaultdict(list)
@@ -3625,16 +3740,49 @@ def generate_python_output():
             f.write("".join(CONTEXT.output_python))
 
 
-if __name__ == "__main__":
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Convert header file to SIP and Python")
-    parser.add_argument("-debug", action="store_true", help="Enable debug mode")
-    parser.add_argument("-qt6", action="store_true", help="Enable Qt6 mode")
-    parser.add_argument("-sip_output", help="SIP output file")
-    parser.add_argument("-python_output", help="Python output file")
-    parser.add_argument("-class_map", help="Class map file")
-    parser.add_argument("headerfile", help="Input header file")
-    args = parser.parse_args()
+def generate_module_start():
+    # Remove src/ directory and .h extension, replace slashes with dots
+    path = Path(CONTEXT.header_file).resolve().relative_to(QGIS_SRC_DIR)
+    qgis_mod = path.parts[0]
+    module = ".".join(["qgis", qgis_mod, "_" + path.stem])
+    write_output("MOD", f"@QGIS_GRANULAR_BUILD_PREFIX@%Module {module}\n")
+
+    # Include the correct common.sip based on which QGIS module we're in
+    write_output("MOD", f"@QGIS_GRANULAR_BUILD_PREFIX@%Include {qgis_mod}_common.sip\n")
+
+
+def process_excluded_file_input():
+    while CONTEXT.line_idx < CONTEXT.line_count:
+        CONTEXT.current_line = read_line()
+
+        if try_skip_sip_if_module(): continue
+        if try_process_sip_directive(): continue
+        process_pyqt_ifdefs()
+        process_using()
+        if try_skip_sip_directives(): continue
+        if try_process_preprocessor_directive(): continue
+
+
+def find_autosave_dest(args):
+    if args.sip_output:
+        print("-autosave does not make sense with manually specified -sip_output", file=sys.stderr)
+        sys.exit(1)
+    headerfile = Path(args.headerfile).resolve().relative_to(QGIS_SRC_DIR)
+    if headerfile.suffix != ".h":
+        print("Tried to process non-header file!", file=sys.stderr)
+        sys.exit(1)
+    qgis_mod = headerfile.parts[0]
+    sip_in_path = Path(*headerfile.with_suffix(".sip.in").parts[1:])
+    pydir = QGIS_SRC_DIR.parent / "python"
+    if args.qt6:
+        pydir = pydir / "PyQt6"
+    return pydir / qgis_mod / "auto_generated" / sip_in_path
+
+
+def generate(args, cpp_header_to_sip_binding_map):
+    sip_output = args.sip_output
+    if args.autosave:
+        sip_output = find_autosave_dest(args)
 
     # Read the input file
     try:
@@ -3646,13 +3794,67 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
+    global CONTEXT
+    CONTEXT = Context()
     CONTEXT.debug = args.debug
     CONTEXT.is_qt6 = args.qt6
     CONTEXT.header_file = args.headerfile
     CONTEXT.input_lines = input_lines
     CONTEXT.line_count = len(input_lines)
+    CONTEXT.cpp_header_to_sip_binding_map = cpp_header_to_sip_binding_map
 
-    process_input()
-    generate_cpp_output()
+    is_sip_excluded_file = \
+        any(re.match(r"^(#define +)?SIP_NO_FILE", l) for l in input_lines) \
+        or CONTEXT.header_file.endswith("_p.h")
+
+    generate_module_start()
+
+    if is_sip_excluded_file:
+        # For private file, skip all declarations and output only imports. This
+        # is needed to provide transitive imports that C++ code (and so the
+        # generated bindings) may rely on.
+        process_excluded_file_input()
+    else:
+        process_input()
+
+    generate_cpp_output(sip_output)
     if args.python_output:
         generate_python_output()
+
+
+if __name__ == "__main__":
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Convert header file to SIP and Python")
+    parser.add_argument("-debug", action="store_true", help="Enable debug mode")
+    parser.add_argument("-debug_header_map", action="store_true",
+                        help="Print header->binding map for debugging")
+    parser.add_argument("-qt6", action="store_true", help="Enable Qt6 mode")
+    parser.add_argument("-sip_output", help="SIP output file")
+    parser.add_argument("-python_output", help="Python output file")
+    parser.add_argument("-class_map", help="Class map file")
+    parser.add_argument("-autosave", help="Automatically save result to correct .sip.in file", action='store_true')
+    parser.add_argument("headerfile", help="Input header file. Pass 'all:MOD' to run on all headers in src/MOD")
+    args = parser.parse_args()
+
+    cpp_header_to_sip_binding_map = get_pyqt_header_sip_mapping()
+    cpp_header_to_sip_binding_map |= get_qgis_header_sip_mapping()
+    cpp_header_to_sip_binding_map |= get_extra_header_sip_mapping()
+
+    if args.debug_header_map:
+        print("Header to binding map:")
+        for k, v in cpp_header_to_sip_binding_map.items():
+            print(f"- {k} -> {v}")
+
+    if args.headerfile.startswith("all:"):
+        if not args.autosave:
+            print("Can't sipify all headers in module without -autosave", file=sys.stderr)
+            sys.exit(1)
+
+        headerfiles = (QGIS_SRC_DIR / args.headerfile[4:]).glob("**/*.h")
+        for headerfile in headerfiles:
+            headerfile = headerfile.relative_to(QGIS_SRC_DIR.parent)
+            args.headerfile = str(headerfile)
+            print(f"Processing {headerfile}", file=sys.stderr)
+            generate(args, cpp_header_to_sip_binding_map)
+    else:
+        generate(args, cpp_header_to_sip_binding_map)

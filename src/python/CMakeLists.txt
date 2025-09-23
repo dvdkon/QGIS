@@ -1,4 +1,4 @@
-set(QGISPYTHON_SRCS qgispython.cpp qgspythonutilsimpl.cpp)
+set(QGISPYTHON_SRCS qgispython.cpp qgspythonutilsimpl.cpp qgspythonbindingsupport.cpp)
 
 add_library (qgispython SHARED ${QGISPYTHON_SRCS})
 

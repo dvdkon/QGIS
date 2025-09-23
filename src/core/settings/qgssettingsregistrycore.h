@@ -29,7 +29,9 @@ class QgsSettingsEntryInteger;
 class QgsSettingsEntryInteger64;
 class QgsSettingsEntryString;
 class QgsSettingsEntryStringList;
+#ifndef SIP_RUN
 template<class T> class QgsSettingsEntryEnumFlag;
+#endif
 
 /**
  * \ingroup core

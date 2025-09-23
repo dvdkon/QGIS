@@ -15,11 +15,13 @@
 #ifndef QGSDIAGRAM_H
 #define QGSDIAGRAM_H
 
-#include "qgis_core.h"
-#include "qgis.h"
 #include <QPen>
 #include <QBrush>
+
+#include "qgis_core.h"
+#include "qgis.h"
 #include "qgsexpression.h" //for QMap with QgsExpression
+#include "qgsattributes.h"
 
 class QPainter;
 class QPointF;
@@ -29,7 +31,6 @@ class QgsFeature;
 class QgsRenderContext;
 class QgsExpressionContext;
 class QgsFields;
-class QgsAttributes;
 
 
 /**

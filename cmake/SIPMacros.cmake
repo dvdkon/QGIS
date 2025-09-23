@@ -46,6 +46,8 @@ SET(SIP_EXTRA_OPTIONS)
 SET(SIP_EXTRA_OBJECTS)
 SET(SIP_BUILD_EXTRA_OPTIONS)
 
+SET(SIP_GRANULAR_BUILD OFF CACHE BOOL "Build a Python module per header instead of per QGIS library")
+
 MACRO(GENERATE_SIP_PYTHON_MODULE_CODE MODULE_NAME MODULE_SIP SIP_FILES CPP_FILES)
 
   STRING(REPLACE "." "/" _x ${MODULE_NAME})
@@ -54,15 +56,27 @@ MACRO(GENERATE_SIP_PYTHON_MODULE_CODE MODULE_NAME MODULE_SIP SIP_FILES CPP_FILES
   GET_FILENAME_COMPONENT(_module_path ${MODULE_SIP} PATH)
   GET_FILENAME_COMPONENT(_abs_module_sip ${MODULE_SIP} ABSOLUTE)
 
+  IF(SIP_GRANULAR_BUILD)
+    SET(SIP_GRANULAR_IMPORT_PREFIX "")
+  ELSE()
+    # If not building module-per-header, comment out what would otherwise be duplicate imports.
+    # TODO: Measure performance impact of leaving them in and decide if this is necessary.
+    SET(SIP_GRANULAR_IMPORT_PREFIX "//")
+  ENDIF()
+
   # If this is not need anymore (using input configuration file for SIP files)
   # SIP could be run in the source rather than in binary directory
   SET(_configured_module_sip ${CMAKE_CURRENT_BINARY_DIR}/${_module_path}/${_module_path}.sip)
+  SET(_sip_modules_configured)
   FOREACH (_sip_file ${SIP_FILES})
     GET_FILENAME_COMPONENT(_sip_file_path ${_sip_file} PATH)
     GET_FILENAME_COMPONENT(_sip_file_name_we ${_sip_file} NAME_WE)
     FILE(RELATIVE_PATH _sip_file_relpath ${BINDING_FILES_ROOT_DIR} "${_sip_file_path}/${_sip_file_name_we}")
     SET(_out_sip_file "${CMAKE_CURRENT_BINARY_DIR}/${_sip_file_relpath}.sip")
     CONFIGURE_FILE(${_sip_file} ${_out_sip_file})
+    IF(_out_sip_file MATCHES ".*/auto_generated/.*")
+      SET(_sip_modules_configured ${_sip_modules_configured} ${_out_sip_file})
+    ENDIF()
 
     # Deprecated annotation supports message only since version 6.9.0
     # if(${SIP_VERSION_STR} VERSION_LESS 6.9.0)
@@ -76,7 +90,6 @@ MACRO(GENERATE_SIP_PYTHON_MODULE_CODE MODULE_NAME MODULE_SIP SIP_FILES CPP_FILES
 
   ENDFOREACH (_sip_file)
 
-  SET(_message "-DMESSAGE=Generating CPP code for module ${MODULE_NAME}")
   SET(_sip_output_files)
 
   # Suppress warnings
@@ -106,28 +119,53 @@ MACRO(GENERATE_SIP_PYTHON_MODULE_CODE MODULE_NAME MODULE_SIP SIP_FILES CPP_FILES
 
   IF (SIP_BUILD_EXECUTABLE)
 
-    FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${_module_path}/build/${_child_module_name})    # Output goes in this dir.
+    SET(_sipargs --no-protected-is-public --pep484-pyi --qmake=${QMAKE_EXECUTABLE} --include-dir=${CMAKE_CURRENT_BINARY_DIR} --include-dir=${PYQT_SIP_DIR} --api-dir ${CMAKE_BINARY_DIR}/python ${SIP_BUILD_EXTRA_OPTIONS})
 
-    FOREACH(CONCAT_NUM RANGE 0 ${SIP_CONCAT_PARTS} )
-      IF( ${CONCAT_NUM} LESS ${SIP_CONCAT_PARTS} )
-        SET(_sip_output_files ${_sip_output_files} ${CMAKE_CURRENT_BINARY_DIR}/${_module_path}/build/${_child_module_name}/sip${_child_module_name}part${CONCAT_NUM}.cpp )
-      ENDIF( ${CONCAT_NUM} LESS ${SIP_CONCAT_PARTS} )
-    ENDFOREACH(CONCAT_NUM RANGE 0 ${SIP_CONCAT_PARTS} )
 
-    SET(SIPCMD ${SIP_BUILD_EXECUTABLE} --no-protected-is-public --pep484-pyi --no-make --concatenate=${SIP_CONCAT_PARTS} --qmake=${QMAKE_EXECUTABLE} --include-dir=${CMAKE_CURRENT_BINARY_DIR} --include-dir=${PYQT_SIP_DIR} --api-dir ${CMAKE_BINARY_DIR}/python ${SIP_BUILD_EXTRA_OPTIONS})
+    IF(SIP_GRANULAR_BUILD)
+      SET(_build_dir ${CMAKE_CURRENT_BINARY_DIR}/${_module_path}/build)
 
-    ADD_CUSTOM_COMMAND(
-      OUTPUT ${_sip_output_files}
-      COMMAND ${CMAKE_COMMAND} -E echo ${message}
-      COMMAND ${SIPCMD}
-      COMMAND ${CMAKE_COMMAND} -E touch ${_sip_output_files}
-      WORKING_DIRECTORY ${_module_path}
-      MAIN_DEPENDENCY ${_configured_module_sip}
-      DEPENDS ${SIP_EXTRA_FILES_DEPEND}
-      VERBATIM
-    )
+      FOREACH(_sip_file ${_sip_modules_configured})
+        GET_FILENAME_COMPONENT(_sip_file_name_we ${_sip_file} NAME_WE)
+        SET(_gen_h_file ${_build_dir}/_${_sip_file_name_we}/sipAPI_${_sip_file_name_we}.h)
+        SET(_gen_cpp_file ${_build_dir}/_${_sip_file_name_we}/sip_${_sip_file_name_we}part0.cpp)
+        SET(_gen_pyi_file ${_build_dir}/_${_sip_file_name_we}/_${_sip_file_name_we}.pyi)
+        SET(_sip_output_files ${_sip_output_files} ${_gen_cpp_file})
+      ENDFOREACH()
+
+      ADD_CUSTOM_COMMAND(
+        OUTPUT ${_sip_output_files}
+        COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/sip_granular_build.py ${_sipargs}
+        WORKING_DIRECTORY ${_module_path}
+        MAIN_DEPENDENCY ${_sip_modules_configured} # TODO: Does this track the dependency on the un-configured SIP file?
+        DEPENDS ${SIP_EXTRA_FILES_DEPEND}
+        USES_TERMINAL # Show progress messages
+        VERBATIM
+      )
+    ELSE()
+      FOREACH(CONCAT_NUM RANGE 0 ${SIP_CONCAT_PARTS} )
+        IF( ${CONCAT_NUM} LESS ${SIP_CONCAT_PARTS} )
+          SET(_sip_output_files ${_sip_output_files} ${CMAKE_CURRENT_BINARY_DIR}/${_module_path}/build/${_child_module_name}/sip${_child_module_name}part${CONCAT_NUM}.cpp )
+        ENDIF( ${CONCAT_NUM} LESS ${SIP_CONCAT_PARTS} )
+      ENDFOREACH(CONCAT_NUM RANGE 0 ${SIP_CONCAT_PARTS} )
+
+      ADD_CUSTOM_COMMAND(
+        OUTPUT ${_sip_output_files}
+        COMMAND ${CMAKE_COMMAND} -E echo ${message}
+        COMMAND ${SIP_BUILD_EXECUTABLE} ${_sipargs} --concatenate=${SIP_CONCAT_PARTS} --no-make
+        #COMMAND ${CMAKE_COMMAND} -E touch ${_sip_output_files}
+        WORKING_DIRECTORY ${_module_path}
+        MAIN_DEPENDENCY ${_configured_module_sip}
+        DEPENDS ${SIP_EXTRA_FILES_DEPEND}
+        VERBATIM
+      )
+    ENDIF(SIP_GRANULAR_BUILD)
 
   ELSE (SIP_BUILD_EXECUTABLE)
+
+    IF(SIP_GRANULAR_BUILD)
+      MESSAGE(FATAL_ERROR "SIP_GRANULAR_BUILD=ON requires sip-build (SIP>=5)")
+    ENDIF()
 
     FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${_module_path})    # Output goes in this dir.
 
@@ -168,7 +206,7 @@ MACRO(GENERATE_SIP_PYTHON_MODULE_CODE MODULE_NAME MODULE_SIP SIP_FILES CPP_FILES
 
   ADD_CUSTOM_TARGET(generate_sip_${MODULE_NAME}_cpp_files DEPENDS ${_sip_output_files})
 
-  SET(CPP_FILES ${sip_output_files})
+  SET(CPP_FILES ${_sip_output_files})
 ENDMACRO(GENERATE_SIP_PYTHON_MODULE_CODE)
 
 # Will compile and link the module
@@ -194,6 +232,7 @@ MACRO(BUILD_SIP_PYTHON_MODULE MODULE_NAME SIP_FILES EXTRA_OBJECTS)
 
   SET_TARGET_PROPERTIES(${_logical_name} PROPERTIES CXX_VISIBILITY_PRESET default)
   TARGET_LINK_LIBRARIES(${_logical_name} Python::Python)
+  TARGET_LINK_LIBRARIES(${_logical_name} qgispython)
   TARGET_LINK_LIBRARIES(${_logical_name} ${EXTRA_LINK_LIBRARIES})
   SET_TARGET_PROPERTIES(${_logical_name} PROPERTIES PREFIX "" OUTPUT_NAME ${_child_module_name})
 

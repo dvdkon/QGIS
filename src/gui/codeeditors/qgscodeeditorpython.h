@@ -23,7 +23,9 @@
 
 class QgsSettingsEntryInteger;
 class QgsSettingsEntryBool;
+#ifndef SIP_RUN
 template<class T> class QgsSettingsEntryEnumFlag;
+#endif
 
 SIP_IF_MODULE( HAVE_QSCI_SIP )
 

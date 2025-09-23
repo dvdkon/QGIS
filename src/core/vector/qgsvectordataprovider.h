@@ -35,8 +35,6 @@ class QTextCodec;
 #include "qgsfeaturerequest.h"
 #include "qgsvectordataprovidertemporalcapabilities.h"
 
-typedef QList<int> QgsAttributeList SIP_SKIP;
-typedef QSet<int> QgsAttributeIds SIP_SKIP;
 typedef QHash<int, QString> QgsAttrPalIndexNameHash;
 
 class QgsFeatureIterator;

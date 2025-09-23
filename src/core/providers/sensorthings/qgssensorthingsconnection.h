@@ -30,7 +30,9 @@ class QgsSettingsEntryDouble;
 class QgsSettingsEntryInteger;
 class QgsSettingsEntryString;
 class QgsSettingsEntryVariantMap;
+#ifndef SIP_RUN
 template<class T> class QgsSettingsEntryEnumFlag;
+#endif
 
 /**
  * \brief Represents connections to SensorThings data sources.

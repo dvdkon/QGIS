@@ -22,7 +22,6 @@
 #include "qgscoordinatereferencesystem.h"
 #include "qgsdistancearea.h"
 #include "qgscoordinatetransformcontext.h"
-#include "qgswkbtypes.h"
 
 #include <QObject>
 #include <QPointer>
@@ -33,7 +32,9 @@ class QgsSettingsEntryBool;
 class QgsSettingsEntryDouble;
 class QgsSettingsEntryInteger;
 class QgsSettingsEntryString;
+#ifndef SIP_RUN
 template<class T> class QgsSettingsEntryEnumFlag;
+#endif
 
 
 class QgsGpsConnection;

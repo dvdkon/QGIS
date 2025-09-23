@@ -28,12 +28,6 @@
 
 /**
  * \ingroup core
- * \brief List of colors paired with a friendly display name identifying the color
-*/
-typedef QList< QPair< QColor, QString > > QgsNamedColorList;
-
-/**
- * \ingroup core
  * \class QgsColorScheme
  * \brief Abstract base class for color schemes.
  *

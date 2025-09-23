@@ -34,8 +34,6 @@ class QgsMapClippingRegion;
 #include <QPainter>
 #include <QElapsedTimer>
 
-typedef QList<int> QgsAttributeList;
-
 #include "qgis_sip.h"
 #include "qgsfields.h"  // QgsFields
 #include "qgsfeatureiterator.h"

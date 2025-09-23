@@ -24,8 +24,6 @@
 #include "qgis_sip.h"
 #include "qgis.h"
 
-typedef QList<int> QgsAttributeList SIP_SKIP;
-
 /***************************************************************************
  * This class is considered CRITICAL and any change MUST be accompanied with
  * full unit tests in testqgsfield.cpp.

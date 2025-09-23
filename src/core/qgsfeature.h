@@ -1266,6 +1266,8 @@ typedef QMap<qint64, QgsGeometry> QgsGeometryMap;
 
 typedef QList<QgsFeature> QgsFeatureList;
 
+typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap;
+
 CORE_EXPORT uint qHash( const QgsFeature &key, uint seed = 0 )  SIP_SKIP;
 
 Q_DECLARE_METATYPE( QgsFeature )

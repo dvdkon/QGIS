@@ -22,8 +22,6 @@
 
 class QgsSpatialIndex;
 
-typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap;
-
 class QgsAfsFeatureSource : public QgsAbstractFeatureSource
 {
   public:

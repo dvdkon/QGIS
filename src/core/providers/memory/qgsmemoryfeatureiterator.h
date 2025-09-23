@@ -27,8 +27,6 @@
 
 class QgsMemoryProvider;
 
-typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap;
-
 class QgsSpatialIndex;
 
 

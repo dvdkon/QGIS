@@ -18,6 +18,7 @@
 
 #include <QString>
 #include <QVariantMap>
+#include <QIcon>
 
 #include "qgis_core.h"
 #include "qgis_sip.h"

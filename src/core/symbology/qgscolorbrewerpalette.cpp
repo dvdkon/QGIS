@@ -14,6 +14,7 @@
  ***************************************************************************/
 
 #include "qgscolorbrewerpalette.h"
+#include "qgssymbollayerutils.h"
 
 /*
 Apache-Style Software License for ColorBrewer software and ColorBrewer Color Schemes

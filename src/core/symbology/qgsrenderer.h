@@ -43,11 +43,6 @@ class QgsLayerTreeModelLegendNode;
 class QgsLayerTreeLayer;
 class QgsSldExportContext;
 
-typedef QMap<QString, QString> QgsStringMap SIP_SKIP;
-
-typedef QList<QgsSymbol *> QgsSymbolList;
-typedef QMap<QString, QgsSymbol * > QgsSymbolMap SIP_SKIP;
-
 #include "qgslegendsymbolitem.h"
 
 

@@ -31,6 +31,10 @@
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatetransform.h"
 
+#if SIP_RUN
+#include "qgsfeatureiterator.h"
+#endif
+
 /**
  * \ingroup core
  * \brief Wraps a request for features to a vector layer (or directly its vector data provider).

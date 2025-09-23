@@ -26,10 +26,6 @@
 class QgsVectorLayer;
 class QgsVectorLayerEditBufferGroup;
 
-typedef QList<int> QgsAttributeList SIP_SKIP;
-typedef QSet<int> QgsAttributeIds SIP_SKIP;
-typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap;
-
 /**
  * \ingroup core
  * \class QgsVectorLayerEditBuffer

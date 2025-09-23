@@ -19,8 +19,6 @@
 #include <QList>
 #include <QColor>
 
-#include "qgssymbollayerutils.h"
-
 /**
  * \ingroup core
  * \class QgsColorBrewerPalette

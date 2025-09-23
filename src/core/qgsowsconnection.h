@@ -35,7 +35,9 @@ class QgsSettingsEntryDouble;
 class QgsSettingsEntryInteger;
 class QgsSettingsEntryString;
 class QgsSettingsEntryVariantMap;
+#ifndef SIP_RUN
 template<class T> class QgsSettingsEntryEnumFlag;
+#endif
 
 
 /**

@@ -21,7 +21,6 @@
 #include <QPair>
 
 #include "qgis_core.h"
-#include "qgsfields.h"
 #include "qgsreadwritecontext.h"
 #include "qgsrelationcontext.h"
 #include "qgsrelation.h"
@@ -31,7 +30,6 @@
 class QgsFeatureIterator;
 class QgsFeature;
 class QgsFeatureRequest;
-class QgsAttributes;
 class QgsVectorLayer;
 class QgsPolymorphicRelationPrivate;
 class QgsExpressionContext;

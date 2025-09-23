@@ -25,6 +25,7 @@
 #include <QAbstractItemModel>
 #include <QIcon>
 #include <QMimeData>
+#include <QWidget>
 
 class QgsCptCityColorRamp;
 class QgsCptCityDataItem;

@@ -28,8 +28,6 @@
 #include <QSet>
 #include <memory>
 
-typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap SIP_SKIP;
-
 class QgsExpressionFieldBuffer;
 class QgsVectorLayer;
 class QgsVectorLayerEditBuffer;

@@ -19,10 +19,10 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include <QList>
-
 #include "qgsrendercontext.h"
+#include "qgsmaplayer.h"
 
+#include <QList>
 #include <QTransform>
 
 class QgsProfileSnapResult;

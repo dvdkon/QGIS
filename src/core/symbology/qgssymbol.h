@@ -21,6 +21,7 @@
 #include "qgspropertycollection.h"
 #include "qgsrendercontext.h"
 #include "qgsscreenproperties.h"
+#include "qgssldexportcontext.h"
 
 class QgsSymbolLayer;
 class QgsLegendPatchShape;

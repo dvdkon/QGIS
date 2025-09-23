@@ -29,6 +29,9 @@ email                : marco.hugentobler at sourcepole dot com
 #ifndef SIP_RUN
 #include <nlohmann/json_fwd.hpp>
 using namespace nlohmann;
+#else
+#include "qgspoint.h"
+#include "qgsbox3d.h"
 #endif
 
 class QgsMapToPixel;
