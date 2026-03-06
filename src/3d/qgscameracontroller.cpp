@@ -186,9 +186,14 @@ void QgsCameraController::rotateCameraAroundPivot( QgsCameraPose &oldCamera, flo
 
 void QgsCameraController::zoomCameraAroundPivot( const QVector3D &oldCameraPosition, double zoomFactor, const QVector3D &pivotPoint )
 {
+  zoomCameraAroundPivot( oldCameraPosition, mCameraPose.distanceFromCenterPoint(), zoomFactor, pivotPoint );
+}
+
+void QgsCameraController::zoomCameraAroundPivot( const QVector3D &oldCameraPosition, double oldDistanceFromCenterPoint, double zoomFactor, const QVector3D &pivotPoint )
+{
   // step 1: move camera along the line connecting reference camera position and our pivot point
   QVector3D newCamPosition = pivotPoint + ( oldCameraPosition - pivotPoint ) * zoomFactor;
-  double newDistance = mCameraPose.distanceFromCenterPoint() * zoomFactor;
+  const double newDistance = oldDistanceFromCenterPoint * zoomFactor;
 
   // step 2: using the new camera position and distance from center, calculate new view center
   QVector3D newViewCenter;
@@ -210,26 +215,6 @@ void QgsCameraController::zoomCameraAroundPivot( const QVector3D &oldCameraPosit
       break;
     }
   }
-
-  mCameraPose.setDistanceFromCenterPoint( newDistance );
-  mCameraPose.setCenterPoint( newViewCenter );
-  updateCameraFromPose();
-
-  // Recompute the origin right away and not on the next frame to avoid
-  // unpleasant jitters when far away from the scene.
-  mScene->recomputeOrigin();
-}
-
-void QgsCameraController::zoomCameraAroundPivot( const QVector3D &oldCameraPosition, double oldDistanceFromCenterPoint, double zoomFactor, const QVector3D &pivotPoint )
-{
-  // step 1: move camera along the line connecting reference camera position and our pivot point
-  QVector3D newCamPosition = pivotPoint + ( oldCameraPosition - pivotPoint ) * zoomFactor;
-  const double newDistance = oldDistanceFromCenterPoint * zoomFactor;
-
-  // step 2: using the new camera position and distance from center, calculate new view center
-  QQuaternion q = Qgs3DUtils::rotationFromPitchHeadingAngles( mCameraPose.pitchAngle(), mCameraPose.headingAngle() );
-  QVector3D cameraToCenter = q * QVector3D( 0, 0, -newDistance );
-  QVector3D newViewCenter = newCamPosition + cameraToCenter;
 
   mCameraPose.setDistanceFromCenterPoint( newDistance );
   mCameraPose.setCenterPoint( newViewCenter );
@@ -443,7 +428,7 @@ QgsVector3D QgsCameraController::globeViewCenterLonLat()
   }
   catch ( const QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "ECEF -> lat,lon transform failed!" ) );
+    QgsDebugError( u"ECEF -> lat,lon transform failed!"_s );
     return {};
   }
 }
@@ -454,9 +439,9 @@ void QgsCameraController::refreshViewCenter( QVector3D &near )
   const double DISTANCE_THRESHOLD = 10'000;
   const double MULT_THRESHOLD = 0.1;
 
-  const QgsRayCastingUtils::Ray3D ray( mCamera->position(), mCamera->viewCenter() - mCamera->position(), mCamera->farPlane() );
+  const QgsRay3D ray( mCamera->position(), mCamera->viewCenter() - mCamera->position() );
   // Find projection of near onto camera -> viewCenter ray.
-  QgsVector3D newCenterPoint = ray.project( near );
+  QgsVector3D newCenterPoint = ray.projectedPoint( near );
   const double diff = newCenterPoint.distance( mCameraPose.centerPoint() );
   const double diffMult = ( newCenterPoint.distance( mCamera->position() ) ) / mCameraPose.distanceFromCenterPoint();
   if ( diff > DISTANCE_THRESHOLD && ( diffMult < MULT_THRESHOLD || diffMult > 1 / MULT_THRESHOLD ) )
